@@ -6,8 +6,8 @@ import asyncio
 import importlib.resources
 import logging
 import re
+import sys
 from datetime import datetime
-from io import BytesIO
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import TypedDict
@@ -15,27 +15,35 @@ from typing import TypedDict
 import click
 from dotenv import dotenv_values
 
-if not Path(".syncmailenv").exists:
-    raise FileNotFoundError("Could not find the `.syncmailenv` configuration file in the current directory.")
-
 
 class Config(TypedDict):
     NEOMUTT_CHECK_INTERVAL: str
     NEOMUTT_LOG_FILE: str
     NEOMUTT_ACCOUNTS_PATH: str
-    NOTMUCH_NOTIFICATION_ICON: str
+
+
+try:
+    if not Path(".syncmailenv").exists:
+        raise FileNotFoundError("Could not find the `.syncmailenv` configuration file in the current directory.")
+except FileNotFoundError as e:
+    click.secho(str(e), fg="red")
+    sys.exit(1)
 
 
 config: Config = dotenv_values(".syncmailenv")  # type: ignore
 
-if (
-    not config.get("NEOMUTT_CHECK_INTERVAL")
-    or not config.get("NEOMUTT_LOG_FILE")
-    or not config("NEMOUTT_ACCOUNTS_PATH")
-):
-    raise ValueError(
-        "Missing environment variables LOG_FILE, ACCOUNTS_PATH, or INTERVAL. Are you executing the program from the directory that contains your configuration options file?"
-    )
+try:
+    if (
+        not config.get("NEOMUTT_CHECK_INTERVAL")
+        or not config.get("NEOMUTT_LOG_FILE")
+        or not config.get("NEOMUTT_ACCOUNTS_PATH")
+    ):
+        raise ValueError(
+            "Missing environment variables NEOMUTT_LOG_FILE, NEOMUTT_ACCOUNTS_PATH, or NEOMUTT_CHECK_INTERVAL. Are you executing the program from the directory that contains your configuration options file?"
+        )
+except ValueError as e:
+    click.secho(str(e), fg="red")
+    sys.exit(1)
 
 background_tasks: set[asyncio.Task[None]] = set()
 
@@ -93,7 +101,9 @@ async def execute():
 async def oneshot(verbose: bool = False):
     if verbose:
         click.secho("Running syncmail", fg="blue", nl=False)
-    _ = await execute()
+
+    await execute()
+
     if verbose:
         click.echo("\r", nl=False)
         click.secho("Running syncmail completed", fg="green")

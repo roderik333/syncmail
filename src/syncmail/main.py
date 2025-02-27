@@ -3,24 +3,39 @@
 """Async mail fetcher.. which is cool."""
 
 import asyncio
+import importlib.resources
 import logging
-import os
 import re
 from datetime import datetime
+from io import BytesIO
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import TypedDict
 
 import click
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
-load_dotenv()
+if not Path(".syncmailenv").exists:
+    raise FileNotFoundError("Could not find the `.syncmailenv` configuration file in the current directory.")
 
-LOG_FILE = os.getenv("LOG_FILE", "")
-ACCOUNTS_PATH = Path(os.getenv("ACCOUNTS_PATH", ""))
-INTERVAL = int(os.getenv("INTERVAL", "0"))
 
-if not INTERVAL or not LOG_FILE or not ACCOUNTS_PATH:
-    raise ValueError("Missing environment variables LOG_FILE, ACCOUNTS_PATH, or INTERVAL")
+class Config(TypedDict):
+    NEOMUTT_CHECK_INTERVAL: str
+    NEOMUTT_LOG_FILE: str
+    NEOMUTT_ACCOUNTS_PATH: str
+    NOTMUCH_NOTIFICATION_ICON: str
+
+
+config: Config = dotenv_values(".syncmailenv")  # type: ignore
+
+if (
+    not config.get("NEOMUTT_CHECK_INTERVAL")
+    or not config.get("NEOMUTT_LOG_FILE")
+    or not config("NEMOUTT_ACCOUNTS_PATH")
+):
+    raise ValueError(
+        "Missing environment variables LOG_FILE, ACCOUNTS_PATH, or INTERVAL. Are you executing the program from the directory that contains your configuration options file?"
+    )
 
 background_tasks: set[asyncio.Task[None]] = set()
 
@@ -29,7 +44,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         RotatingFileHandler(
-            LOG_FILE,
+            config["NEOMUTT_LOG_FILE"],
             maxBytes=1024 * 1024,  # 1 MB
             backupCount=5,
         ),
@@ -48,17 +63,18 @@ async def run_mbsync(channel: str):
     )
     stdout, stderr = await mb.communicate()
     if stdout:
-        res = re.search(r"pulled (\d) new message\(s\)", stdout.decode())
-        if res and res.group(1).isdigit() and int(res.group(1)) > 0:
-            _ = await asyncio.create_subprocess_exec(
-                "notify-send",
-                "-t",
-                "5000",
-                "-i",
-                "/home/roderik/Pictures/neomutt.png",
-                f"{res.group(1)} new mail in {channel}",
-            )
-        logger.info(f"{channel} reports: {stdout.decode()}")
+        with importlib.resources.path("syncmail", "icon/neomutt.png") as filepath:
+            res = re.search(r"pulled (\d) new message\(s\)", stdout.decode())
+            if res and res.group(1).isdigit() and int(res.group(1)) > 0:
+                _ = await asyncio.create_subprocess_exec(
+                    "notify-send",
+                    "-t",
+                    "5000",
+                    "-i",
+                    filepath,
+                    f"{res.group(1)} new mail in {channel}",
+                )
+            logger.info(f"{channel} reports: {stdout.decode()}")
     if stderr:
         logger.error(f"{channel} reports error: {stderr.decode()}")
     logger.info(f"Done running {channel}")
@@ -66,7 +82,10 @@ async def run_mbsync(channel: str):
 
 async def execute():
     tasks: list[asyncio.Task[None]]
-    tasks = [asyncio.create_task(run_mbsync(account_name.stem)) for account_name in ACCOUNTS_PATH.glob("*.muttrc")]
+    tasks = [
+        asyncio.create_task(run_mbsync(account_name.stem))
+        for account_name in Path(config["NEOMUTT_ACCOUNTS_PATH"]).glob("*.muttrc")
+    ]
     background_tasks.update(tasks)
     [task.add_done_callback(background_tasks.discard) for task in tasks]
 
@@ -89,10 +108,10 @@ async def main():
     try:
         await execute()
         while True:
-            await asyncio.sleep(150)
+            await asyncio.sleep(int(config["NEOMUTT_CHECK_INTERVAL"]) / 2)
             # not too sure about this. It might not be neccessary.
             _ = await asyncio.create_subprocess_exec("notmuch", "new", "--quiet")
-            await asyncio.sleep(150)
+            await asyncio.sleep(int(config["NEOMUTT_CHECK_INTERVAL"]) / 2)
             await execute()
             click.secho("\r", nl=False)
             click.secho(

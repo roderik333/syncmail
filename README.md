@@ -1,13 +1,17 @@
 # Syncronus mail fetcher
 
 ## Install
-```sh
-$ python -m pip install --user https+ssh://github.com/roderik333/syncmail.git#egg=syncmail
 
+```sh
+
+python -m pip install --user 'git+https://github.com/roderik333/syncmail.git#egg=syncmail'
 ```
+
 ## WHATSIT?
-This is a simple mail fetcher meant for use with `neomutt` that has been set up using `mutt-wizard`. 
-> **_NOTE:_** Since `neomutt` has been set up with `mutt-wizard` there are some assumptions made. You might have to adjust the script to your liking.
+
+This is a simple mail fetcher meant for use with `neomutt` that has been set up using `mutt-wizard`.
+
+> **_NOTE:_** Since `neomutt` has been set up with `mutt-wizard` there are some assumptions made. Most notably, you have actually used `mutt-wizard` to configure `neomutt` and installed all dependencies. If not, then you might have to adjust this script to your liking.
 
 The use case for this is an immutable distro, in my case bazzite, where I couldn't get `*.timer` to work reliably. Why did I need this? Because everything is installed in a distrobox...
 
@@ -27,7 +31,9 @@ ExecStart=/usr/bin/distrobox-enter --name <my container name> -- /usr/local/bin/
 
 [Install]
 WantedBy=default.target
+```
 
+```
 # ~/.config/systemd/user/mailsync.timer
 
 [Unit]
@@ -42,19 +48,19 @@ Unit=mailsync.service
 WantedBy=timers.target
 ```
 
-Installed on `systemctl --user` this runs once, then bombs out. After restarting the timer it runs as expected. This happenes each and every time the machine starts. I got fed ut with it and I couldn't figure out what I was wrong. Thusly, `syncmail`.
+Installed on `systemctl --user` this runs once, then bombs out. After restarting the timer it runs as expected. This happenes each and every time the machine starts. I got fed ut with it and I couldn't figure out what I was doing wrong. Thusly, `syncmail`.
 
 ## ENVs
 
 After installation you can use the `dotenv cli` to add enviroment variables.
 
 ```sh
-$ dotenv set LOG_FILE /tmp/mutt_fetch.log
-$ dotenv set ACCOUNTS_PATH /home/<your user name>/.config/mutt/accounts
-$ dotenv set INTERVAL 300
+dotenv -f .syncmailenv set NEOMUTT_LOG_FILE /tmp/mutt_fetch.log
+dotenv -f .syncmailenv set NEOMUTT_ACCOUNTS_PATH /home/<your user name>/.config/mutt/accounts
+dotenv -f .syncmailenv set NEOMUTT_CHECK_INTERVAL 300
 ```
 
-Now, provided you have installed this on `--user` or in a active `venv` you will have a commandline tool `syncmail` in your path.
+Now, provided you have installed this script on `--user` or in a active `venv` you will have a commandline tool `syncmail` in your path.
 
 ```sh
 
@@ -83,3 +89,5 @@ $ bg %1  # resumes syncmail while still in the bacground
 $ fg  # takes syncmail to the foreground
 ^ctrl-c  # quits out of syncmail
 ```
+
+That's about it.

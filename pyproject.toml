@@ -7,7 +7,7 @@ name = "syncmail"
 dynamic = ["version", "readme"]
 description = 'A tool to sync email accounts.'
 requires-python = ">=3.12"
-license = {"text" = "In house" }
+license = {"text" = "MIT" }
 keywords = []
 authors = [
   { name = "Rune Hansén Steinnes-Westum", email = "rune.steinnes@westum.no" },

@@ -79,10 +79,11 @@ async def run_mbsync(channel: str):
                     "-t",
                     "5000",
                     "-a",
-                    f"New Mail in {channel}",
+                    "NeoMutt",
                     "-e",
                     "-i",
                     filepath,
+                    f"{res.group(1)} new mail in {channel}",
                 )
             logger.info(f"{channel} reports: {stdout.decode()}")
     if stderr:

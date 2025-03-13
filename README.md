@@ -1,4 +1,4 @@
-# Syncronus mail fetcher
+# Asyncronus mail fetcher
 
 ## Install
 
